@@ -38,31 +38,38 @@ func User() {
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Couldn't add user %+v to org %+v Err: %+v\n", user, org, err)
 			}
-			group, err := client.Groups.Get("admins")
-			fmt.Printf("Group list  %+v in org %+v\n", group, org)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Couldn't get the admins group for org %+v Err: %+v\n", org, err)
-			}
-			group.Actors = append(group.Actors, "sue")
-			group.Users = append(group.Users, "sue")
-			groupupd, err := client.Groups.Update(group)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Couldn't add sue to the admins group for org %+v Err: %+v\n", org, err)
-			}
-			fmt.Printf("Group result %+v in org %+v\n", groupupd, org)
 		}
 	}
-	client = OrgClient("blue")
-	group := chef.Group{}
-	group.Name = "blueusers"
-	group.GroupName = "blueusers"
-	group.Actors = []string{"sue"}
-	group.Users = []string{"sue"}
-	groupres, err := client.Groups.Create(group)
-	fmt.Printf("Blueusers create %+v %+v\n", groupres, err)
-	group.Users = []string{"sue", "doan"}
-	groupupd, err := client.Groups.Update(group)
-	fmt.Printf("Blueusers %+v %+v\n", groupupd, err)
-	groupout, err := client.Groups.Get("blueusers")
-	fmt.Printf("Blueusers %+v %+v\n", groupout, err)
+
+	// sue is admin for these organizations
+	sueadmins := []string{"blue", "sales", "admin", "mainapp"}
+	for _, org := range sueadmins {
+		client = OrgClient(org)
+		admingrp, err := client.Groups.Get("admins")
+		// Add admin users
+		groupupdate := chef.GroupUpdate{}
+		groupupdate.Name = "admins"
+		groupupdate.GroupName = "admins"
+		groupupdate.Actors.Clients = admingrp.Clients
+		groupupdate.Actors.Groups = admingrp.Groups
+		groupupdate.Actors.Users = append(admingrp.Users, "sue")
+		_, err = client.Groups.Update(groupupdate)
+		adminout, _ := client.Groups.Get("admins")
+		fmt.Printf("For org %+v admins %+v err  %+v\n", org, adminout, err)
+	}
+
+	// doan is admin for the testorg organization
+	client = OrgClient("testorg")
+	// Get the existing group settings
+	admingrp, err := client.Groups.Get("admins")
+	// Create an update
+	groupupdate := chef.GroupUpdate{}
+	groupupdate.Name = "admins"
+	groupupdate.GroupName = "admins"
+	groupupdate.Actors.Clients = admingrp.Clients
+	groupupdate.Actors.Groups = admingrp.Groups
+	groupupdate.Actors.Users = append(admingrp.Users, "doan")
+	_, err = client.Groups.Update(groupupdate)
+	adminout, _ := client.Groups.Get("admins")
+	fmt.Printf("For org %+v admins %+v err  %+v\n", "testorg", adminout, err)
 }
